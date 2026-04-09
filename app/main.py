@@ -1,21 +1,23 @@
+from typing import Sequence
+
 from db import SessionLocal
 from models import File, Folder, User
 from sqlalchemy import select
 
 
-def print_users(users: list[User]) -> None:
+def print_users(users: Sequence[User]) -> None:
     print("Users:")
     for user in users:
         print(user)
 
 
-def print_user_files(id: int, files: list[File]) -> None:
+def print_user_files(id: int, files: Sequence[File]) -> None:
     print(f"\nFiles of user {id}:")
     for file in files:
         print(file)
 
 
-def print_user_folders(id: int, folders: list[Folder]) -> None:
+def print_user_folders(id: int, folders: Sequence[Folder]) -> None:
     print(f"\nFolders of user {id}:")
     for folder in folders:
         print(folder)
@@ -24,7 +26,7 @@ def print_user_folders(id: int, folders: list[Folder]) -> None:
 def get_user_files_by_id(id: int = 1) -> None:
     with SessionLocal() as session:
         files = session.execute(
-            select(File).where(File.owner_id == id, File.is_deleted == False)
+            select(File).where(File.owner_id == id, ~File.is_deleted)
         ).scalars().all()
         print_user_files(id, files)
 
@@ -33,7 +35,7 @@ def get_user_folders_by_id(id: int = 1) -> None:
     with SessionLocal() as session:
         folders = session.execute(
             select(Folder).where(Folder.owner_id ==
-                                 id, Folder.is_deleted == False)
+                                 id, ~Folder.is_deleted)
         ).scalars().all()
         print_user_folders(id, folders)
 
