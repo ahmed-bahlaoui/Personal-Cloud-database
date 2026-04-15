@@ -1,3 +1,4 @@
+-- Active: 1775685284534@@127.0.0.1@5432@cloud_storage
 -- =========================================
 -- queries.sql
 -- Personal Cloud Storage - Common Operations
@@ -10,8 +11,9 @@
 -- Find all active files of a user
 
 SELECT * FROM files
-WHERE owner_id = 1 
-AND is_deleted = FALSE;
+WHERE owner_id = 2
+AND is_deleted = FALSE
+LIMIT 5;
 
 
 -- Find all active files of a user (clean display)

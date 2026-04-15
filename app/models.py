@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
+from app.db import Base
 from sqlalchemy import (
     TIMESTAMP,
     BigInteger,
@@ -10,8 +11,6 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from db import Base
 
 
 class User(Base):

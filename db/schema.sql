@@ -1,3 +1,4 @@
+-- Active: 1775685284534@@127.0.0.1@5432@cloud_storage
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
