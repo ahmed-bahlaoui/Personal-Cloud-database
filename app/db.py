@@ -1,13 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/cloud_storage"
+from app.settings import DATABASE_URL, SQL_ECHO
 
 
 class Base(DeclarativeBase):
     pass
 
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=SQL_ECHO)
 
 SessionLocal = sessionmaker(bind=engine)

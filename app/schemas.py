@@ -10,7 +10,6 @@ class MessageResponse(BaseModel):
 class FolderCreate(BaseModel):
     name: str
     parent_folder_id: int | None = None
-    owner_id: int
 
 
 class FolderRead(BaseModel):
@@ -45,3 +44,26 @@ class FileRead(BaseModel):
     deleted_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class UserCreate(BaseModel):
+    email: str
+    username: str
+    password: str
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    username: str
+    storage_quota_bytes: int
+    used_storage_bytes: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

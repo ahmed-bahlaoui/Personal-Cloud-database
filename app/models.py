@@ -7,8 +7,10 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     ForeignKey,
+    Index,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,6 +49,16 @@ class User(Base):
 
 class Folder(Base):
     __tablename__ = "folders"
+    __table_args__ = (
+        Index(
+            "uq_active_folder_name_per_location",
+            "owner_id",
+            text("COALESCE(parent_folder_id, -1)"),
+            "name",
+            unique=True,
+            postgresql_where=text("is_deleted = FALSE"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     owner_id: Mapped[int] = mapped_column(
@@ -93,6 +105,16 @@ class Folder(Base):
 
 class File(Base):
     __tablename__ = "files"
+    __table_args__ = (
+        Index(
+            "uq_active_file_name_per_location",
+            "owner_id",
+            text("COALESCE(folder_id, -1)"),
+            "original_name",
+            unique=True,
+            postgresql_where=text("is_deleted = FALSE"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     owner_id: Mapped[int] = mapped_column(

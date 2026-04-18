@@ -4,6 +4,8 @@
 -- Personal Cloud Storage - Common Operations
 -- =========================================
 
+SELECT id, username, email FROM users;
+
 -- =========================================================
 -- 1. FILES - FINDING / LISTING
 -- =========================================================
@@ -387,3 +389,15 @@ SELECT setval( 'users_id_seq', ( SELECT MAX(id) FROM users ) );
 SELECT setval( 'folders_id_seq', ( SELECT MAX(id) FROM folders ) );
 
 SELECT setval( 'files_id_seq', ( SELECT MAX(id) FROM files ) );
+
+-- Rebuild partial unique indexes so root-level names are protected too
+DROP INDEX IF EXISTS unique_folder_name_per_parent;
+DROP INDEX IF EXISTS unique_file_name_per_folder;
+
+CREATE UNIQUE INDEX uq_active_folder_name_per_location
+ON folders(owner_id, COALESCE(parent_folder_id, -1), name)
+WHERE is_deleted = FALSE;
+
+CREATE UNIQUE INDEX uq_active_file_name_per_location
+ON files(owner_id, COALESCE(folder_id, -1), original_name)
+WHERE is_deleted = FALSE;

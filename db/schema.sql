@@ -57,12 +57,12 @@ ON files(owner_id, folder_id);
 CREATE INDEX idx_files_owner_created_at
 ON files(owner_id, created_at DESC);
 
-CREATE UNIQUE INDEX unique_folder_name_per_parent
-ON folders(owner_id, parent_folder_id, name)
+CREATE UNIQUE INDEX uq_active_folder_name_per_location
+ON folders(owner_id, COALESCE(parent_folder_id, -1), name)
 WHERE is_deleted = FALSE;
 
-CREATE UNIQUE INDEX unique_file_name_per_folder
-ON files(owner_id, folder_id, original_name)
+CREATE UNIQUE INDEX uq_active_file_name_per_location
+ON files(owner_id, COALESCE(folder_id, -1), original_name)
 WHERE is_deleted = FALSE;
 
 
