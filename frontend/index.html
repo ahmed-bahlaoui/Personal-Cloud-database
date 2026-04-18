@@ -2,86 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=./login.html">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloud Vault Auth</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <title>Redirecting</title>
 </head>
 <body>
-  <main class="page-shell">
-    <section class="hero-panel">
-      <p class="eyebrow">Personal Cloud Vault</p>
-      <h1>Access your storage without the usual beige login form.</h1>
-      <p class="hero-copy">
-        Register a new account, sign in, and keep your bearer token ready for the protected API routes.
-      </p>
-      <div class="status-grid">
-        <article>
-          <span class="status-label">Backend</span>
-          <strong id="backend-url-label">http://127.0.0.1:8000</strong>
-        </article>
-        <article>
-          <span class="status-label">Session</span>
-          <strong id="session-state">No token stored</strong>
-        </article>
-      </div>
-    </section>
-
-    <section class="auth-panel">
-      <div class="panel-topbar">
-        <label class="api-field">
-          <span>API Base URL</span>
-          <input id="api-base-url" type="url" value="http://127.0.0.1:8000" />
-        </label>
-      </div>
-
-      <div class="tab-row" role="tablist" aria-label="Authentication forms">
-        <button id="register-tab" class="tab is-active" type="button" data-target="register-form">Register</button>
-        <button id="login-tab" class="tab" type="button" data-target="login-form">Login</button>
-      </div>
-
-      <form id="register-form" class="auth-form is-visible">
-        <h2>Create account</h2>
-        <label>
-          <span>Email</span>
-          <input id="register-email" type="email" placeholder="you@example.com" required>
-        </label>
-        <label>
-          <span>Username</span>
-          <input id="register-username" type="text" placeholder="vaultpilot" required>
-        </label>
-        <label>
-          <span>Password</span>
-          <input id="register-password" type="password" placeholder="At least 8 characters" required>
-        </label>
-        <button class="primary-action" type="submit">Register</button>
-      </form>
-
-      <form id="login-form" class="auth-form">
-        <h2>Sign in</h2>
-        <label>
-          <span>Username</span>
-          <input id="login-username" type="text" placeholder="vaultpilot" required>
-        </label>
-        <label>
-          <span>Password</span>
-          <input id="login-password" type="password" placeholder="Your password" required>
-        </label>
-        <button class="primary-action" type="submit">Login</button>
-      </form>
-
-      <section class="result-panel">
-        <div class="result-header">
-          <h3>Session output</h3>
-          <button id="fetch-me" class="secondary-action" type="button">Fetch /auth/me</button>
-        </div>
-        <pre id="response-output">No requests made yet.</pre>
-      </section>
-    </section>
-  </main>
-
-  <script src="./app.js"></script>
+  <p>Redirecting to <a href="./login.html">login</a>...</p>
 </body>
 </html>

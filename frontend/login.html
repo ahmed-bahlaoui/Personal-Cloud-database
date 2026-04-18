@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Vault Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-panel">
+      <p class="eyebrow">Personal Cloud Vault</p>
+      <h1>Sign in and move directly into your workspace.</h1>
+      <p class="hero-copy">
+        Use your account credentials to get a bearer token and enter the upload dashboard.
+      </p>
+      <div class="status-grid">
+        <article>
+          <span class="status-label">Backend</span>
+          <strong id="backend-url-label">http://127.0.0.1:8000</strong>
+        </article>
+        <article>
+          <span class="status-label">Session</span>
+          <strong id="session-state">No token stored</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="panel-topbar">
+        <label class="api-field">
+          <span>API Base URL</span>
+          <input id="api-base-url" type="url" value="http://127.0.0.1:8000">
+        </label>
+      </div>
+
+      <nav class="link-row">
+        <a class="nav-pill is-active" href="./login.html">Login</a>
+        <a class="nav-pill" href="./register.html">Register</a>
+      </nav>
+
+      <p id="flash-message" class="flash-message" hidden></p>
+
+      <form id="login-form" class="auth-form is-visible">
+        <h2>Sign in</h2>
+        <label>
+          <span>Username</span>
+          <input id="login-username" type="text" placeholder="vaultpilot" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="login-password" type="password" placeholder="Your password" required>
+        </label>
+        <button class="primary-action" type="submit">Login</button>
+      </form>
+
+      <section class="result-panel">
+        <div class="result-header">
+          <h3>Response</h3>
+        </div>
+        <pre id="response-output">No requests made yet.</pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="./common.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>

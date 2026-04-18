@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Vault Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-panel">
+      <p class="eyebrow">Personal Cloud Vault</p>
+      <h1>Create an account before you start uploading files.</h1>
+      <p class="hero-copy">
+        Registration only needs email, username, and password. After that, continue to the login page.
+      </p>
+      <div class="status-grid">
+        <article>
+          <span class="status-label">Backend</span>
+          <strong id="backend-url-label">http://127.0.0.1:8000</strong>
+        </article>
+        <article>
+          <span class="status-label">Session</span>
+          <strong id="session-state">No token stored</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="panel-topbar">
+        <label class="api-field">
+          <span>API Base URL</span>
+          <input id="api-base-url" type="url" value="http://127.0.0.1:8000">
+        </label>
+      </div>
+
+      <nav class="link-row">
+        <a class="nav-pill" href="./login.html">Login</a>
+        <a class="nav-pill is-active" href="./register.html">Register</a>
+      </nav>
+
+      <p id="flash-message" class="flash-message" hidden></p>
+
+      <form id="register-form" class="auth-form is-visible">
+        <h2>Create account</h2>
+        <label>
+          <span>Email</span>
+          <input id="register-email" type="email" placeholder="you@example.com" required>
+        </label>
+        <label>
+          <span>Username</span>
+          <input id="register-username" type="text" placeholder="vaultpilot" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="register-password" type="password" placeholder="At least 8 characters" required>
+        </label>
+        <button class="primary-action" type="submit">Register</button>
+      </form>
+
+      <section class="result-panel">
+        <div class="result-header">
+          <h3>Response</h3>
+        </div>
+        <pre id="response-output">No requests made yet.</pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="./common.js"></script>
+  <script src="./register.js"></script>
+</body>
+</html>

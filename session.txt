@@ -1,1 +1,12 @@
 codex resume 019d91e8-5633-7882-ac9e-66c0ae40d684
+
+Known testing accounts:
+
+Account ID: 8
+testAccount
+testAccount123
+
+
+Account ID: 7
+ahmedishere
+ahmed12345678

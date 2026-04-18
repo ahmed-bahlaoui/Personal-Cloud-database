@@ -11,12 +11,12 @@ from app.db import SessionLocal
 from app.models import File, Folder, User
 from app.queries import get_user_files_by_id, get_user_folders_by_id
 from app.schemas import (
-    FileRestore,
     FileRead,
     FileRename,
+    FileRestore,
     FolderCreate,
-    FolderRename,
     FolderRead,
+    FolderRename,
     MessageResponse,
     TokenResponse,
     UserCreate,
@@ -24,7 +24,8 @@ from app.schemas import (
 )
 from app.settings import ALLOWED_ORIGINS, STORAGE_ROOT
 from app.storage import save_uploaded_file
-from fastapi import Depends, FastAPI, File as FastAPIFile, Form, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, Form, HTTPException, UploadFile, status
+from fastapi import File as FastAPIFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select

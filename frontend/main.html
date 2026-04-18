@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Vault Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-panel">
+      <p class="eyebrow">Personal Cloud Vault</p>
+      <h1>Your workspace is ready for files and folders.</h1>
+      <p class="hero-copy">
+        Upload files into root or into one of your folders, then refresh to inspect the current workspace state.
+      </p>
+      <div class="status-grid">
+        <article>
+          <span class="status-label">Backend</span>
+          <strong id="backend-url-label">http://127.0.0.1:8000</strong>
+        </article>
+        <article>
+          <span class="status-label">Session</span>
+          <strong id="session-state">Bearer token stored</strong>
+        </article>
+      </div>
+      <div class="hero-actions">
+        <button id="fetch-me" class="secondary-action" type="button">Check Session</button>
+        <button id="logout-button" class="ghost-action" type="button">Logout</button>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="panel-topbar">
+        <label class="api-field">
+          <span>API Base URL</span>
+          <input id="api-base-url" type="url" value="http://127.0.0.1:8000">
+        </label>
+      </div>
+
+      <section class="dashboard-panel">
+        <div class="dashboard-header">
+          <div>
+            <p class="eyebrow">Workspace</p>
+            <h2>Manage files and folders</h2>
+          </div>
+          <button id="refresh-data" class="secondary-action" type="button">Refresh Data</button>
+        </div>
+
+        <p id="flash-message" class="flash-message" hidden></p>
+
+        <div class="dashboard-grid dashboard-grid-actions">
+          <section class="collection-panel">
+            <div class="collection-header">
+              <h3>Upload File</h3>
+            </div>
+            <form id="upload-form" class="upload-form">
+              <label>
+                <span>Select file</span>
+                <input id="upload-file" type="file" required>
+              </label>
+              <label>
+                <span>Folder</span>
+                <select id="folder-select">
+                  <option value="">Root</option>
+                </select>
+              </label>
+              <button class="primary-action" type="submit">Upload File</button>
+            </form>
+          </section>
+
+          <section class="collection-panel">
+            <div class="collection-header">
+              <h3>Create Folder</h3>
+            </div>
+            <form id="create-folder-form" class="upload-form">
+              <label>
+                <span>Folder name</span>
+                <input id="folder-name" type="text" placeholder="Documents" required>
+              </label>
+              <label>
+                <span>Parent folder</span>
+                <select id="parent-folder-select">
+                  <option value="">Root</option>
+                </select>
+              </label>
+              <button class="primary-action" type="submit">Create Folder</button>
+            </form>
+          </section>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="collection-panel">
+            <div class="collection-header">
+              <h3>Folders</h3>
+              <span id="folder-count" class="pill">0</span>
+            </div>
+            <ul id="folder-list" class="collection-list">
+              <li class="empty-state">No folders loaded yet.</li>
+            </ul>
+          </section>
+
+          <section class="collection-panel">
+            <div class="collection-header">
+              <h3>Files</h3>
+              <span id="file-count" class="pill">0</span>
+            </div>
+            <ul id="file-list" class="collection-list">
+              <li class="empty-state">No files loaded yet.</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="result-panel">
+        <div class="result-header">
+          <h3>Response</h3>
+        </div>
+        <pre id="response-output">No requests made yet.</pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="./common.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
