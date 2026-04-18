@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -40,3 +41,4 @@ ALLOWED_ORIGINS = _get_list_env(
         "http://127.0.0.1:5173",
     ],
 )
+STORAGE_ROOT = Path(os.getenv("STORAGE_ROOT", "storage")).resolve()

@@ -12,6 +12,10 @@ class FolderCreate(BaseModel):
     parent_folder_id: int | None = None
 
 
+class FolderRename(BaseModel):
+    new_name: str
+
+
 class FolderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,6 +31,10 @@ class FolderRead(BaseModel):
 
 class FileRename(BaseModel):
     new_name: str
+
+
+class FileRestore(BaseModel):
+    folder_id: int | None = None
 
 
 class FileRead(BaseModel):

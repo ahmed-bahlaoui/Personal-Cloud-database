@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 
 from app.auth import (
     create_access_token,
@@ -10,20 +11,23 @@ from app.db import SessionLocal
 from app.models import File, Folder, User
 from app.queries import get_user_files_by_id, get_user_folders_by_id
 from app.schemas import (
+    FileRestore,
     FileRead,
     FileRename,
     FolderCreate,
+    FolderRename,
     FolderRead,
     MessageResponse,
     TokenResponse,
     UserCreate,
     UserRead,
 )
-from app.settings import ALLOWED_ORIGINS
-from fastapi import Depends, FastAPI, HTTPException, status
+from app.settings import ALLOWED_ORIGINS, STORAGE_ROOT
+from app.storage import save_uploaded_file
+from fastapi import Depends, FastAPI, File as FastAPIFile, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 app = FastAPI()
@@ -35,6 +39,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # ROOT
+
+
+def utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def recalculate_used_storage(session, user_id: int) -> None:
+    total_storage = session.execute(
+        select(func.coalesce(func.sum(File.size_bytes), 0)).where(
+            File.owner_id == user_id,
+            ~File.is_deleted,
+        )
+    ).scalar_one()
+    user = session.get(User, user_id)
+    if user:
+        user.used_storage_bytes = int(total_storage)
+        user.updated_at = utcnow()
+
+
+def get_accessible_active_folder(session, folder_id: int, user_id: int) -> Folder:
+    folder = session.get(Folder, folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    if folder.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="You do not have access to this folder")
+    if folder.is_deleted:
+        raise HTTPException(status_code=400, detail="Folder is deleted")
+    return folder
+
+
+def has_active_folder_name_conflict(
+    session, user_id: int, parent_folder_id: int | None, name: str, exclude_folder_id: int | None = None
+) -> bool:
+    query = select(Folder).where(
+        Folder.owner_id == user_id,
+        Folder.name == name,
+        ~Folder.is_deleted,
+    )
+    if exclude_folder_id is not None:
+        query = query.where(Folder.id != exclude_folder_id)
+    if parent_folder_id is None:
+        query = query.where(Folder.parent_folder_id.is_(None))
+    else:
+        query = query.where(Folder.parent_folder_id == parent_folder_id)
+    return session.execute(query).scalar_one_or_none() is not None
+
+
+def has_active_file_name_conflict(
+    session, user_id: int, folder_id: int | None, name: str, exclude_file_id: int | None = None
+) -> bool:
+    query = select(File).where(
+        File.owner_id == user_id,
+        File.original_name == name,
+        ~File.is_deleted,
+    )
+    if exclude_file_id is not None:
+        query = query.where(File.id != exclude_file_id)
+    if folder_id is None:
+        query = query.where(File.folder_id.is_(None))
+    else:
+        query = query.where(File.folder_id == folder_id)
+    return session.execute(query).scalar_one_or_none() is not None
+
+
+def soft_delete_folder_tree(session, root_folder: Folder) -> None:
+    deleted_at = utcnow()
+    folder_ids: list[int] = []
+    stack = [root_folder]
+
+    while stack:
+        current_folder = stack.pop()
+        folder_ids.append(current_folder.id)
+        child_folders = session.execute(
+            select(Folder).where(Folder.parent_folder_id == current_folder.id)
+        ).scalars().all()
+        stack.extend(child_folders)
+
+    active_folders = session.execute(
+        select(Folder).where(Folder.id.in_(folder_ids), ~Folder.is_deleted)
+    ).scalars().all()
+    for folder in active_folders:
+        folder.is_deleted = True
+        folder.deleted_at = deleted_at
+        folder.updated_at = deleted_at
+
+    active_files = session.execute(
+        select(File).where(File.folder_id.in_(folder_ids), ~File.is_deleted)
+    ).scalars().all()
+    for file in active_files:
+        file.is_deleted = True
+        file.deleted_at = deleted_at
+        file.updated_at = deleted_at
 
 
 @app.get("/", response_model=MessageResponse)
@@ -127,6 +223,90 @@ def get_folders(current_user: User = Depends(get_current_user)):
     return get_user_folders_by_id(current_user.id)
 
 
+@app.get("/trash/files", response_model=list[FileRead])
+def get_deleted_files(current_user: User = Depends(get_current_user)):
+    with SessionLocal() as session:
+        return session.execute(
+            select(File).where(
+                File.owner_id == current_user.id,
+                File.is_deleted,
+            ).order_by(File.deleted_at.desc())
+        ).scalars().all()
+
+
+@app.get("/trash/folders", response_model=list[FolderRead])
+def get_deleted_folders(current_user: User = Depends(get_current_user)):
+    with SessionLocal() as session:
+        return session.execute(
+            select(Folder).where(
+                Folder.owner_id == current_user.id,
+                Folder.is_deleted,
+            ).order_by(Folder.deleted_at.desc())
+        ).scalars().all()
+
+
+@app.post("/files", response_model=FileRead, status_code=201)
+def upload_file(
+    file: UploadFile = FastAPIFile(...),
+    folder_id: int | None = Form(default=None),
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as session:
+        user = session.get(User, current_user.id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        target_folder = None
+        if folder_id is not None:
+            target_folder = get_accessible_active_folder(session, folder_id, current_user.id)
+
+        original_name = Path(file.filename or "").name.strip()
+        if not original_name:
+            raise HTTPException(status_code=400, detail="File name cannot be empty")
+
+        if has_active_file_name_conflict(session, current_user.id, folder_id, original_name):
+            raise HTTPException(
+                status_code=409,
+                detail="A file with the same name already exists in this location",
+            )
+
+        content = file.file.read()
+        size_bytes = len(content)
+        if user.used_storage_bytes + size_bytes > user.storage_quota_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail="File upload exceeds the user's storage quota",
+            )
+
+        storage_key, checksum = save_uploaded_file(original_name, content)
+        file_record = File(
+            owner_id=current_user.id,
+            folder_id=target_folder.id if target_folder else None,
+            original_name=original_name,
+            storage_key=storage_key,
+            mime_type=file.content_type,
+            size_bytes=size_bytes,
+            checksum=checksum,
+        )
+
+        try:
+            session.add(file_record)
+            recalculate_used_storage(session, current_user.id)
+            session.commit()
+            session.refresh(file_record)
+        except IntegrityError:
+            session.rollback()
+            storage_path = STORAGE_ROOT / storage_key
+            if storage_path.exists():
+                storage_path.unlink()
+            raise HTTPException(
+                status_code=409,
+                detail="File could not be uploaded because the database rejected the insert",
+            )
+
+        return file_record
+
+
 # POST folders
 @app.post("/folders", response_model=FolderRead, status_code=201)
 def create_folder(data: FolderCreate, current_user: User = Depends(get_current_user)):
@@ -146,25 +326,12 @@ def create_folder(data: FolderCreate, current_user: User = Depends(get_current_u
                     status_code=403,
                     detail="You do not have access to this parent folder",
                 )
+            if parent_folder.is_deleted:
+                raise HTTPException(status_code=400, detail="Parent folder is deleted")
 
-        existing_folder_query = select(Folder).where(
-            Folder.owner_id == current_user.id,
-            Folder.name == folder_name,
-            ~Folder.is_deleted,
-        )
-
-        if data.parent_folder_id is None:
-            existing_folder_query = existing_folder_query.where(
-                Folder.parent_folder_id.is_(None)
-            )
-        else:
-            existing_folder_query = existing_folder_query.where(
-                Folder.parent_folder_id == data.parent_folder_id
-            )
-
-        existing_folder = session.execute(
-            existing_folder_query).scalar_one_or_none()
-        if existing_folder:
+        if has_active_folder_name_conflict(
+            session, current_user.id, data.parent_folder_id, folder_name
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="A folder with the same name already exists in this location",
@@ -193,6 +360,73 @@ def create_folder(data: FolderCreate, current_user: User = Depends(get_current_u
         return folder
 
 
+@app.patch("/folders/{folder_id}", response_model=FolderRead)
+def rename_folder(
+    folder_id: int,
+    data: FolderRename,
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as session:
+        folder = get_accessible_active_folder(session, folder_id, current_user.id)
+        new_name = data.new_name.strip()
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Folder name cannot be empty")
+
+        if has_active_folder_name_conflict(
+            session,
+            current_user.id,
+            folder.parent_folder_id,
+            new_name,
+            exclude_folder_id=folder.id,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="A folder with the same name already exists in this location",
+            )
+
+        folder.name = new_name
+        folder.updated_at = utcnow()
+
+        try:
+            session.commit()
+            session.refresh(folder)
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Folder could not be renamed because the database rejected the update",
+            )
+
+        return folder
+
+
+@app.delete("/folders/{folder_id}", response_model=MessageResponse)
+def delete_folder(folder_id: int, current_user: User = Depends(get_current_user)):
+    with SessionLocal() as session:
+        folder = session.get(Folder, folder_id)
+
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        if folder.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You do not have access to this folder")
+        if folder.is_deleted:
+            raise HTTPException(status_code=400, detail="Folder is already deleted")
+
+        soft_delete_folder_tree(session, folder)
+        recalculate_used_storage(session, current_user.id)
+
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Folder could not be deleted because the database rejected the update",
+            )
+
+        return {"message": "Folder deleted"}
+
+
 @app.patch("/files/{file_id}", response_model=FileRead)
 def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get_current_user)):
     with SessionLocal() as session:
@@ -213,30 +447,20 @@ def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get
             raise HTTPException(
                 status_code=400, detail="File name cannot be empty")
 
-        duplicate_file_query = select(File).where(
-            File.id != file_id,
-            File.owner_id == file.owner_id,
-            File.original_name == new_name,
-            ~File.is_deleted,
-        )
-
-        if file.folder_id is None:
-            duplicate_file_query = duplicate_file_query.where(
-                File.folder_id.is_(None))
-        else:
-            duplicate_file_query = duplicate_file_query.where(
-                File.folder_id == file.folder_id
-            )
-
-        duplicate_file = session.execute(
-            duplicate_file_query).scalar_one_or_none()
-        if duplicate_file:
+        if has_active_file_name_conflict(
+            session,
+            file.owner_id,
+            file.folder_id,
+            new_name,
+            exclude_file_id=file_id,
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="A file with the same name already exists in this location",
             )
 
         file.original_name = new_name
+        file.updated_at = utcnow()
 
         try:
             session.commit()
@@ -246,6 +470,67 @@ def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get
             raise HTTPException(
                 status_code=409,
                 detail="File could not be renamed because the database rejected the update",
+            )
+
+        return file
+
+
+@app.post("/files/{file_id}/restore", response_model=FileRead)
+def restore_file(
+    file_id: int,
+    data: FileRestore,
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as session:
+        file = session.get(File, file_id)
+        user = session.get(User, current_user.id)
+
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        if file.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You do not have access to this file")
+        if not file.is_deleted:
+            raise HTTPException(status_code=400, detail="File is not deleted")
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        target_folder_id = data.folder_id if data.folder_id is not None else file.folder_id
+        if target_folder_id is not None:
+            target_folder = get_accessible_active_folder(session, target_folder_id, current_user.id)
+            target_folder_id = target_folder.id
+
+        if has_active_file_name_conflict(
+            session,
+            current_user.id,
+            target_folder_id,
+            file.original_name,
+            exclude_file_id=file.id,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="A file with the same name already exists in this location",
+            )
+
+        if user.used_storage_bytes + file.size_bytes > user.storage_quota_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail="Restoring this file exceeds the user's storage quota",
+            )
+
+        file.folder_id = target_folder_id
+        file.is_deleted = False
+        file.deleted_at = None
+        file.updated_at = utcnow()
+        recalculate_used_storage(session, current_user.id)
+
+        try:
+            session.commit()
+            session.refresh(file)
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="File could not be restored because the database rejected the update",
             )
 
         return file
@@ -267,7 +552,9 @@ def delete_file(file_id: int, current_user: User = Depends(get_current_user)):
                 status_code=400, detail="File is already deleted")
 
         file.is_deleted = True
-        file.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+        file.deleted_at = utcnow()
+        file.updated_at = utcnow()
+        recalculate_used_storage(session, current_user.id)
 
         try:
             session.commit()
