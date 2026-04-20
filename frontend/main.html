@@ -10,116 +10,130 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="page-shell">
-    <section class="hero-panel">
-      <p class="eyebrow">Personal Cloud Vault</p>
-      <h1>Your workspace is ready for files and folders.</h1>
-      <p class="hero-copy">
-        Upload files into root or into one of your folders, then refresh to inspect the current workspace state.
-      </p>
-      <div class="status-grid">
-        <article>
-          <span class="status-label">Backend</span>
-          <strong id="backend-url-label">http://127.0.0.1:8000</strong>
-        </article>
-        <article>
-          <span class="status-label">Session</span>
-          <strong id="session-state">Bearer token stored</strong>
-        </article>
+  <main class="drive-shell">
+    <header class="drive-topbar">
+      <div class="drive-brand">
+        <span class="drive-logo">CV</span>
+        <div>
+          <p class="eyebrow">Personal Cloud Vault</p>
+          <h1 class="drive-title">My Drive</h1>
+        </div>
       </div>
-      <div class="hero-actions">
-        <button id="fetch-me" class="secondary-action" type="button">Check Session</button>
-        <button id="logout-button" class="ghost-action" type="button">Logout</button>
-      </div>
-    </section>
 
-    <section class="auth-panel">
-      <div class="panel-topbar">
-        <label class="api-field">
+      <div class="drive-topbar-actions">
+        <label class="api-field compact-field">
           <span>API Base URL</span>
           <input id="api-base-url" type="url" value="http://127.0.0.1:8000">
         </label>
+        <button id="fetch-me" class="secondary-action" type="button">Check Session</button>
+        <button id="refresh-data" class="secondary-action" type="button">Refresh</button>
+        <button id="logout-button" class="ghost-action" type="button">Logout</button>
       </div>
+    </header>
 
-      <section class="dashboard-panel">
-        <div class="dashboard-header">
-          <div>
-            <p class="eyebrow">Workspace</p>
-            <h2>Manage files and folders</h2>
+    <section class="drive-layout">
+      <aside class="drive-sidebar">
+        <section class="sidebar-card">
+          <p class="eyebrow">Account</p>
+          <h2 id="welcome-heading" class="sidebar-title">Loading workspace...</h2>
+          <p id="workspace-subtitle" class="sidebar-copy">Checking the authenticated user.</p>
+          <div class="status-grid drive-status-grid">
+            <article>
+              <span class="status-label">Backend</span>
+              <strong id="backend-url-label">http://127.0.0.1:8000</strong>
+            </article>
+            <article>
+              <span class="status-label">Session</span>
+              <strong id="session-state">Bearer token stored</strong>
+            </article>
           </div>
-          <button id="refresh-data" class="secondary-action" type="button">Refresh Data</button>
-        </div>
+        </section>
+
+        <section class="sidebar-card">
+          <div class="collection-header">
+            <h3>Upload File</h3>
+          </div>
+          <form id="upload-form" class="upload-form">
+            <label>
+              <span>Select file</span>
+              <input id="upload-file" type="file" required>
+            </label>
+            <label>
+              <span>Folder</span>
+              <select id="folder-select">
+                <option value="">Root</option>
+              </select>
+            </label>
+            <button class="primary-action" type="submit">Upload File</button>
+          </form>
+        </section>
+
+        <section class="sidebar-card">
+          <div class="collection-header">
+            <h3>Create Folder</h3>
+          </div>
+          <form id="create-folder-form" class="upload-form">
+            <label>
+              <span>Folder name</span>
+              <input id="folder-name" type="text" placeholder="Documents" required>
+            </label>
+            <label>
+              <span>Parent folder</span>
+              <select id="parent-folder-select">
+                <option value="">Root</option>
+              </select>
+            </label>
+            <button class="primary-action" type="submit">Create Folder</button>
+          </form>
+        </section>
 
         <p id="flash-message" class="flash-message" hidden></p>
+      </aside>
 
-        <div class="dashboard-grid dashboard-grid-actions">
-          <section class="collection-panel">
-            <div class="collection-header">
-              <h3>Upload File</h3>
+      <section class="drive-main">
+        <section class="drive-overview">
+          <article class="overview-card">
+            <span class="status-label">Folders</span>
+            <strong id="folder-count" class="overview-value">0</strong>
+            <p class="overview-copy">Active folders available in your drive.</p>
+          </article>
+          <article class="overview-card">
+            <span class="status-label">Files</span>
+            <strong id="file-count" class="overview-value">0</strong>
+            <p class="overview-copy">Files currently visible to the authenticated user.</p>
+          </article>
+        </section>
+
+        <section class="drive-section">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Folders</p>
+              <h2>Browse folders</h2>
             </div>
-            <form id="upload-form" class="upload-form">
-              <label>
-                <span>Select file</span>
-                <input id="upload-file" type="file" required>
-              </label>
-              <label>
-                <span>Folder</span>
-                <select id="folder-select">
-                  <option value="">Root</option>
-                </select>
-              </label>
-              <button class="primary-action" type="submit">Upload File</button>
-            </form>
-          </section>
+          </div>
+          <ul id="folder-list" class="drive-grid">
+            <li class="empty-state drive-empty">No folders loaded yet.</li>
+          </ul>
+        </section>
 
-          <section class="collection-panel">
-            <div class="collection-header">
-              <h3>Create Folder</h3>
+        <section class="drive-section">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Files</p>
+              <h2>Browse files</h2>
             </div>
-            <form id="create-folder-form" class="upload-form">
-              <label>
-                <span>Folder name</span>
-                <input id="folder-name" type="text" placeholder="Documents" required>
-              </label>
-              <label>
-                <span>Parent folder</span>
-                <select id="parent-folder-select">
-                  <option value="">Root</option>
-                </select>
-              </label>
-              <button class="primary-action" type="submit">Create Folder</button>
-            </form>
-          </section>
-        </div>
+          </div>
+          <ul id="file-list" class="drive-list">
+            <li class="empty-state drive-empty">No files loaded yet.</li>
+          </ul>
+        </section>
 
-        <div class="dashboard-grid">
-          <section class="collection-panel">
-            <div class="collection-header">
-              <h3>Folders</h3>
-              <span id="folder-count" class="pill">0</span>
-            </div>
-            <ul id="folder-list" class="collection-list">
-              <li class="empty-state">No folders loaded yet.</li>
-            </ul>
-          </section>
-
-          <section class="collection-panel">
-            <div class="collection-header">
-              <h3>Files</h3>
-              <span id="file-count" class="pill">0</span>
-            </div>
-            <ul id="file-list" class="collection-list">
-              <li class="empty-state">No files loaded yet.</li>
-            </ul>
-          </section>
-        </div>
-      </section>
-
-      <section class="result-panel">
-        <div class="result-header">
-          <h3>Response</h3>
-        </div>
-        <pre id="response-output">No requests made yet.</pre>
+        <section class="result-panel">
+          <div class="result-header">
+            <h3>Response</h3>
+          </div>
+          <pre id="response-output">No requests made yet.</pre>
+        </section>
       </section>
     </section>
   </main>

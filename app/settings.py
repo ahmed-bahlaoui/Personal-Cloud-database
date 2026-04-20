@@ -3,9 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 load_dotenv()
-
 
 def _get_required_env(name: str) -> str:
     value = os.getenv(name)

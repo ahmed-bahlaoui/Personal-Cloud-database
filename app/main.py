@@ -12,9 +12,12 @@ from app.models import File, Folder, User
 from app.queries import get_user_files_by_id, get_user_folders_by_id
 from app.schemas import (
     FileRead,
+    FileMove,
     FileRename,
     FileRestore,
+    FolderContents,
     FolderCreate,
+    FolderMove,
     FolderRead,
     FolderRename,
     MessageResponse,
@@ -27,6 +30,7 @@ from app.storage import save_uploaded_file
 from fastapi import Depends, FastAPI, Form, HTTPException, UploadFile, status
 from fastapi import File as FastAPIFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -134,6 +138,15 @@ def soft_delete_folder_tree(session, root_folder: Folder) -> None:
         file.updated_at = deleted_at
 
 
+def folder_is_descendant(session, folder_id: int, possible_descendant_id: int) -> bool:
+    current_folder = session.get(Folder, possible_descendant_id)
+    while current_folder and current_folder.parent_folder_id is not None:
+        if current_folder.parent_folder_id == folder_id:
+            return True
+        current_folder = session.get(Folder, current_folder.parent_folder_id)
+    return False
+
+
 @app.get("/", response_model=MessageResponse)
 def root():
     return {"message": "Cloud Storage API is running"}
@@ -216,12 +229,57 @@ def get_me(current_user: User = Depends(get_current_user)):
 def get_files(current_user: User = Depends(get_current_user)):
     return get_user_files_by_id(current_user.id)
 
+
+@app.get("/files/{file_id}/download")
+def download_file(file_id: int, current_user: User = Depends(get_current_user)):
+    with SessionLocal() as session:
+        file = session.get(File, file_id)
+
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        if file.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You do not have access to this file")
+        if file.is_deleted:
+            raise HTTPException(status_code=400, detail="File is deleted")
+
+        storage_path = STORAGE_ROOT / file.storage_key
+        if not storage_path.exists():
+            raise HTTPException(status_code=404, detail="Stored file not found")
+
+        return FileResponse(
+            path=storage_path,
+            media_type=file.mime_type or "application/octet-stream",
+            filename=file.original_name,
+        )
+
 # GET folders
 
 
 @app.get("/folders", response_model=list[FolderRead])
 def get_folders(current_user: User = Depends(get_current_user)):
     return get_user_folders_by_id(current_user.id)
+
+
+@app.get("/folders/{folder_id}/contents", response_model=FolderContents)
+def get_folder_contents(folder_id: int, current_user: User = Depends(get_current_user)):
+    with SessionLocal() as session:
+        folder = get_accessible_active_folder(session, folder_id, current_user.id)
+
+        child_folders = session.execute(
+            select(Folder).where(
+                Folder.parent_folder_id == folder.id,
+                ~Folder.is_deleted,
+            ).order_by(Folder.name.asc(), Folder.id.asc())
+        ).scalars().all()
+
+        files = session.execute(
+            select(File).where(
+                File.folder_id == folder.id,
+                ~File.is_deleted,
+            ).order_by(File.original_name.asc(), File.id.asc())
+        ).scalars().all()
+
+        return {"folders": child_folders, "files": files}
 
 
 @app.get("/trash/files", response_model=list[FileRead])
@@ -401,6 +459,56 @@ def rename_folder(
         return folder
 
 
+@app.patch("/folders/{folder_id}/move", response_model=FolderRead)
+def move_folder(
+    folder_id: int,
+    data: FolderMove,
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as session:
+        folder = get_accessible_active_folder(session, folder_id, current_user.id)
+        target_parent_id = data.parent_folder_id
+
+        if target_parent_id == folder.id:
+            raise HTTPException(status_code=400, detail="A folder cannot be moved inside itself")
+
+        if target_parent_id is not None:
+            target_parent = get_accessible_active_folder(session, target_parent_id, current_user.id)
+            if folder_is_descendant(session, folder.id, target_parent.id):
+                raise HTTPException(
+                    status_code=400,
+                    detail="A folder cannot be moved inside one of its descendants",
+                )
+            target_parent_id = target_parent.id
+
+        if has_active_folder_name_conflict(
+            session,
+            current_user.id,
+            target_parent_id,
+            folder.name,
+            exclude_folder_id=folder.id,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="A folder with the same name already exists in this location",
+            )
+
+        folder.parent_folder_id = target_parent_id
+        folder.updated_at = utcnow()
+
+        try:
+            session.commit()
+            session.refresh(folder)
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Folder could not be moved because the database rejected the update",
+            )
+
+        return folder
+
+
 @app.delete("/folders/{folder_id}", response_model=MessageResponse)
 def delete_folder(folder_id: int, current_user: User = Depends(get_current_user)):
     with SessionLocal() as session:
@@ -471,6 +579,55 @@ def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get
             raise HTTPException(
                 status_code=409,
                 detail="File could not be renamed because the database rejected the update",
+            )
+
+        return file
+
+
+@app.patch("/files/{file_id}/move", response_model=FileRead)
+def move_file(
+    file_id: int,
+    data: FileMove,
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as session:
+        file = session.get(File, file_id)
+
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        if file.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You do not have access to this file")
+        if file.is_deleted:
+            raise HTTPException(status_code=400, detail="Cannot move a deleted file")
+
+        target_folder_id = data.folder_id
+        if target_folder_id is not None:
+            target_folder = get_accessible_active_folder(session, target_folder_id, current_user.id)
+            target_folder_id = target_folder.id
+
+        if has_active_file_name_conflict(
+            session,
+            current_user.id,
+            target_folder_id,
+            file.original_name,
+            exclude_file_id=file.id,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="A file with the same name already exists in this location",
+            )
+
+        file.folder_id = target_folder_id
+        file.updated_at = utcnow()
+
+        try:
+            session.commit()
+            session.refresh(file)
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="File could not be moved because the database rejected the update",
             )
 
         return file

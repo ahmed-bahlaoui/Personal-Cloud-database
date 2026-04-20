@@ -1,6 +1,6 @@
-from pathlib import Path
 
 import app.main
+from app.models import User
 
 
 def upload_sample_file(
@@ -17,6 +17,14 @@ def upload_sample_file(
     if folder_id is not None:
         request_kwargs["data"] = {"folder_id": str(folder_id)}
     return client.post("/files", **request_kwargs)
+
+
+def create_folder(client, headers, name: str, parent_folder_id: int | None = None):
+    return client.post(
+        "/folders",
+        headers=headers,
+        json={"name": name, "parent_folder_id": parent_folder_id},
+    )
 
 
 def test_upload_file_succeeds_in_root(client, register_and_login):
@@ -85,14 +93,15 @@ def test_upload_file_rejects_duplicate_name_in_same_folder(client, register_and_
 def test_upload_file_rejects_when_quota_is_exceeded(
     client,
     register_and_login,
-):
+) -> None:
     headers = register_and_login()
 
     me_response = client.get("/auth/me", headers=headers)
     user_id = me_response.json()["id"]
 
     with app.main.SessionLocal() as session:
-        user = session.get(app.main.User, user_id)
+        user: User | None = session.get(app.main.User, user_id)
+        assert user is not None,  f"User {user_id} not found"
         user.storage_quota_bytes = 5
         user.used_storage_bytes = 0
         session.commit()
@@ -179,6 +188,7 @@ def test_restore_file_rejects_when_quota_is_exceeded(client, register_and_login)
 
     with app.main.SessionLocal() as session:
         user = session.get(app.main.User, user_id)
+        assert user is not None,  f"User {user_id} not found"
         user.storage_quota_bytes = 5
         user.used_storage_bytes = 0
         session.commit()
@@ -258,3 +268,149 @@ def test_delete_folder_soft_deletes_descendants_and_recalculates_storage(client,
     me_after_delete = client.get("/auth/me", headers=headers)
     assert me_after_delete.status_code == 200
     assert me_after_delete.json()["used_storage_bytes"] == 0
+
+
+def test_download_file_returns_uploaded_blob(client, register_and_login):
+    headers = register_and_login()
+
+    upload_response = upload_sample_file(
+        client,
+        headers,
+        filename="download.txt",
+        content=b"download payload",
+    )
+    assert upload_response.status_code == 201
+    file_id = upload_response.json()["id"]
+
+    response = client.get(f"/files/{file_id}/download", headers=headers)
+
+    assert response.status_code == 200
+    assert response.content == b"download payload"
+    assert "download.txt" in response.headers["content-disposition"]
+
+
+def test_get_folder_contents_returns_only_direct_children(client, register_and_login):
+    headers = register_and_login()
+
+    parent_response = create_folder(client, headers, "parent")
+    parent_folder = parent_response.json()
+    child_folder_response = create_folder(
+        client, headers, "child", parent_folder["id"]
+    )
+    child_folder = child_folder_response.json()
+    grandchild_response = create_folder(
+        client, headers, "grandchild", child_folder["id"]
+    )
+    assert grandchild_response.status_code == 201
+
+    root_file_response = upload_sample_file(
+        client,
+        headers,
+        filename="root.txt",
+        content=b"root",
+        folder_id=parent_folder["id"],
+    )
+    nested_file_response = upload_sample_file(
+        client,
+        headers,
+        filename="nested.txt",
+        content=b"nested",
+        folder_id=child_folder["id"],
+    )
+    assert root_file_response.status_code == 201
+    assert nested_file_response.status_code == 201
+
+    response = client.get(
+        f"/folders/{parent_folder['id']}/contents",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [folder["name"] for folder in body["folders"]] == ["child"]
+    assert [file["original_name"] for file in body["files"]] == ["root.txt"]
+
+
+def test_move_file_updates_its_folder(client, register_and_login):
+    headers = register_and_login()
+
+    source_folder = create_folder(client, headers, "source").json()
+    target_folder = create_folder(client, headers, "target").json()
+    upload_response = upload_sample_file(
+        client,
+        headers,
+        filename="move-me.txt",
+        content=b"abc",
+        folder_id=source_folder["id"],
+    )
+    file_id = upload_response.json()["id"]
+
+    response = client.patch(
+        f"/files/{file_id}/move",
+        headers=headers,
+        json={"folder_id": target_folder["id"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["folder_id"] == target_folder["id"]
+
+    source_contents = client.get(
+        f"/folders/{source_folder['id']}/contents",
+        headers=headers,
+    ).json()
+    target_contents = client.get(
+        f"/folders/{target_folder['id']}/contents",
+        headers=headers,
+    ).json()
+    assert source_contents["files"] == []
+    assert [file["original_name"] for file in target_contents["files"]] == ["move-me.txt"]
+
+
+def test_move_folder_updates_parent_folder(client, register_and_login):
+    headers = register_and_login()
+
+    source_parent = create_folder(client, headers, "source-parent").json()
+    target_parent = create_folder(client, headers, "target-parent").json()
+    moving_folder = create_folder(
+        client, headers, "moving-folder", source_parent["id"]
+    ).json()
+
+    response = client.patch(
+        f"/folders/{moving_folder['id']}/move",
+        headers=headers,
+        json={"parent_folder_id": target_parent["id"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["parent_folder_id"] == target_parent["id"]
+
+    source_contents = client.get(
+        f"/folders/{source_parent['id']}/contents",
+        headers=headers,
+    ).json()
+    target_contents = client.get(
+        f"/folders/{target_parent['id']}/contents",
+        headers=headers,
+    ).json()
+    assert source_contents["folders"] == []
+    assert [folder["name"] for folder in target_contents["folders"]] == ["moving-folder"]
+
+
+def test_move_folder_rejects_descendant_target(client, register_and_login):
+    headers = register_and_login()
+
+    root_folder = create_folder(client, headers, "root-folder").json()
+    child_folder = create_folder(
+        client, headers, "child-folder", root_folder["id"]
+    ).json()
+
+    response = client.patch(
+        f"/folders/{root_folder['id']}/move",
+        headers=headers,
+        json={"parent_folder_id": child_folder["id"]},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "A folder cannot be moved inside one of its descendants"
+    )

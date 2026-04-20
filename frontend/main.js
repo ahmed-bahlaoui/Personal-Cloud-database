@@ -3,6 +3,8 @@ redirectIfLoggedOut();
 const apiBaseUrlInput = document.querySelector("#api-base-url");
 const backendUrlLabel = document.querySelector("#backend-url-label");
 const sessionState = document.querySelector("#session-state");
+const welcomeHeading = document.querySelector("#welcome-heading");
+const workspaceSubtitle = document.querySelector("#workspace-subtitle");
 const flashMessage = document.querySelector("#flash-message");
 const output = document.querySelector("#response-output");
 const folderSelect = document.querySelector("#folder-select");
@@ -31,7 +33,7 @@ function renderFolders(folders) {
   folderSelect.innerHTML = '<option value="">Root</option>';
   parentFolderSelect.innerHTML = '<option value="">Root</option>';
   if (!folders.length) {
-    folderList.innerHTML = '<li class="empty-state">No folders available.</li>';
+    folderList.innerHTML = '<li class="empty-state drive-empty">No folders available.</li>';
     return;
   }
 
@@ -44,7 +46,8 @@ function renderFolders(folders) {
     });
 
     return `
-      <li>
+      <li class="drive-card">
+        <span class="drive-card-icon">Folder</span>
         <span class="collection-name">${folder.name}</span>
         <span class="collection-meta">id: ${folder.id} · parent: ${folder.parent_folder_id ?? "root"}</span>
       </li>
@@ -55,14 +58,17 @@ function renderFolders(folders) {
 function renderFiles(files) {
   fileCount.textContent = String(files.length);
   if (!files.length) {
-    fileList.innerHTML = '<li class="empty-state">No files uploaded yet.</li>';
+    fileList.innerHTML = '<li class="empty-state drive-empty">No files uploaded yet.</li>';
     return;
   }
 
   fileList.innerHTML = files.map((file) => `
-    <li>
-      <span class="collection-name">${file.original_name}</span>
-      <span class="collection-meta">folder: ${file.folder_id ?? "root"} · ${file.size_bytes} bytes</span>
+    <li class="drive-row">
+      <div>
+        <span class="collection-name">${file.original_name}</span>
+        <span class="collection-meta">folder: ${file.folder_id ?? "root"}</span>
+      </div>
+      <span class="collection-meta">${file.size_bytes} bytes</span>
     </li>
   `).join("");
 }
@@ -113,6 +119,8 @@ document.querySelector("#fetch-me").addEventListener("click", async () => {
   }
 
   if (response.ok) {
+    welcomeHeading.textContent = `Welcome back, ${data.username}`;
+    workspaceSubtitle.textContent = `${data.email} · ${data.used_storage_bytes} bytes used`;
     showFlashMessage(`Authenticated as ${data.username}.`);
   } else {
     showFlashMessage(data.detail || "Could not fetch current user.", "error");
@@ -206,4 +214,5 @@ apiBaseUrlInput.addEventListener("input", () => {
 });
 
 syncMainPage();
+document.querySelector("#fetch-me").click();
 loadWorkspaceData();

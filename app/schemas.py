@@ -16,6 +16,10 @@ class FolderRename(BaseModel):
     new_name: str
 
 
+class FolderMove(BaseModel):
+    parent_folder_id: int | None = None
+
+
 class FolderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,6 +38,10 @@ class FileRename(BaseModel):
 
 
 class FileRestore(BaseModel):
+    folder_id: int | None = None
+
+
+class FileMove(BaseModel):
     folder_id: int | None = None
 
 
@@ -75,3 +83,8 @@ class UserRead(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class FolderContents(BaseModel):
+    folders: list[FolderRead]
+    files: list[FileRead]

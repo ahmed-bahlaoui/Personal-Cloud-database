@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from app.db import Base
@@ -15,6 +15,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -29,9 +33,9 @@ class User(Base):
     used_storage_bytes: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
 
     folders: Mapped[List["Folder"]] = relationship(
         back_populates="owner",
@@ -77,9 +81,9 @@ class Folder(Base):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMP, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="folders")
 
@@ -138,9 +142,9 @@ class File(Base):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMP, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, nullable=False, default=datetime.utcnow)
+        TIMESTAMP, nullable=False, default=utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="files")
     folder: Mapped[Optional["Folder"]] = relationship(back_populates="files")

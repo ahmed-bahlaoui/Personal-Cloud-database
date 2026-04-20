@@ -25,6 +25,186 @@ body {
     linear-gradient(135deg, #efe2ca 0%, #f8f4ec 38%, #ece8df 100%);
 }
 
+.drive-shell {
+  width: min(1380px, calc(100% - 28px));
+  margin: 18px auto 28px;
+}
+
+.drive-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: rgba(255, 252, 247, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+
+.drive-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.drive-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), #df9d35);
+  color: white;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+}
+
+.drive-title {
+  margin: 4px 0 0;
+  font-size: 2rem;
+}
+
+.drive-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.compact-field {
+  min-width: 240px;
+}
+
+.drive-layout {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.drive-sidebar,
+.drive-main {
+  display: grid;
+  gap: 18px;
+}
+
+.sidebar-card,
+.drive-section,
+.overview-card,
+.result-panel {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 252, 247, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+
+.sidebar-card,
+.drive-section,
+.result-panel {
+  padding: 20px;
+}
+
+.sidebar-title {
+  margin: 6px 0 8px;
+  font-size: 1.5rem;
+}
+
+.sidebar-copy,
+.overview-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.drive-status-grid {
+  grid-template-columns: 1fr;
+}
+
+.drive-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  padding: 20px;
+}
+
+.overview-value {
+  display: block;
+  margin: 10px 0 8px;
+  font-size: 2.2rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-header h2 {
+  margin: 6px 0 0;
+  font-size: 1.45rem;
+}
+
+.drive-grid {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.drive-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(33, 23, 15, 0.05);
+  border: 1px solid rgba(33, 23, 15, 0.08);
+}
+
+.drive-card-icon {
+  display: inline-flex;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(203, 90, 47, 0.12);
+  color: var(--accent-dark);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+}
+
+.drive-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.drive-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(33, 23, 15, 0.05);
+  border: 1px solid rgba(33, 23, 15, 0.08);
+}
+
+.drive-empty {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(33, 23, 15, 0.05);
+  border: 1px dashed rgba(33, 23, 15, 0.12);
+}
+
 .page-shell {
   width: min(1140px, calc(100% - 32px));
   margin: 32px auto;
@@ -382,6 +562,14 @@ pre {
 }
 
 @media (max-width: 920px) {
+  .drive-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .drive-overview {
+    grid-template-columns: 1fr;
+  }
+
   .page-shell {
     grid-template-columns: 1fr;
   }
@@ -392,6 +580,28 @@ pre {
 }
 
 @media (max-width: 560px) {
+  .drive-shell {
+    width: min(100% - 16px, 1380px);
+    margin: 10px auto 20px;
+  }
+
+  .drive-topbar {
+    padding: 16px;
+  }
+
+  .drive-topbar,
+  .sidebar-card,
+  .drive-section,
+  .result-panel,
+  .overview-card {
+    border-radius: 20px;
+  }
+
+  .drive-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .page-shell {
     width: min(100% - 20px, 1140px);
     margin: 10px auto 20px;
