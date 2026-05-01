@@ -1,8 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from app.db import Base
-from main import utcnow
 from sqlalchemy import (
     TIMESTAMP,
     BigInteger,
@@ -14,6 +13,10 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class User(Base):
