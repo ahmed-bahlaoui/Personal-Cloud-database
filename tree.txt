@@ -1,0 +1,40 @@
+.
+├── app
+│   ├── auth.py
+│   ├── db.py
+│   ├── main.py
+│   ├── models.py
+│   ├── queries.py
+│   ├── schemas.py
+│   ├── settings.py
+│   └── storage.py
+├── backend
+├── db
+│   ├── main.py
+│   ├── migrations
+│   ├── queries.sql
+│   ├── README.md
+│   ├── schema.sql
+│   └── seed.sql
+├── documentation.md
+├── frontend
+│   ├── common.js
+│   ├── index.html
+│   ├── login.html
+│   ├── login.js
+│   ├── main.html
+│   ├── main.js
+│   ├── register.html
+│   ├── register.js
+│   └── styles.css
+├── pyproject.toml
+├── session.txt
+├── storage
+├── testing.md
+├── tests
+│   ├── conftest.py
+│   ├── storage
+│   ├── test_auth_routes.py
+│   └── test_file_routes.py
+├── tree.txt
+└── uv.lock
