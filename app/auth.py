@@ -31,8 +31,7 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, stored_password_hash: str) -> bool:
     try:
-        encoded_salt, encoded_hash = stored_password_hash.split(
-            "$", maxsplit=1)
+        encoded_salt, encoded_hash = stored_password_hash.split("$", maxsplit=1)
         salt = base64.b64decode(encoded_salt.encode("utf-8"))
         expected_hash = base64.b64decode(encoded_hash.encode("utf-8"))
     except (ValueError, TypeError):

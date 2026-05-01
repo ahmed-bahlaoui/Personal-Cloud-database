@@ -25,17 +25,22 @@ def print_user_folders(id: int, folders: Sequence[Folder]) -> None:
 
 def get_user_files_by_id(id: int = 1):
     with SessionLocal() as session:
-        return session.execute(
-            select(File).where(File.owner_id == id, ~File.is_deleted)
-        ).scalars().all()
+        return (
+            session.execute(select(File).where(File.owner_id == id, ~File.is_deleted))
+            .scalars()
+            .all()
+        )
 
 
 def get_user_folders_by_id(id: int = 1):
     with SessionLocal() as session:
-        return session.execute(
-            select(Folder).where(Folder.owner_id ==
-                                 id, ~Folder.is_deleted)
-        ).scalars().all()
+        return (
+            session.execute(
+                select(Folder).where(Folder.owner_id == id, ~Folder.is_deleted)
+            )
+            .scalars()
+            .all()
+        )
 
 
 def get_all_users() -> None:

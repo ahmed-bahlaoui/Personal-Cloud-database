@@ -11,8 +11,8 @@ from app.db import SessionLocal
 from app.models import File, Folder, User
 from app.queries import get_user_files_by_id, get_user_folders_by_id
 from app.schemas import (
-    FileRead,
     FileMove,
+    FileRead,
     FileRename,
     FileRestore,
     FolderContents,
@@ -68,14 +68,20 @@ def get_accessible_active_folder(session, folder_id: int, user_id: int) -> Folde
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
     if folder.owner_id != user_id:
-        raise HTTPException(status_code=403, detail="You do not have access to this folder")
+        raise HTTPException(
+            status_code=403, detail="You do not have access to this folder"
+        )
     if folder.is_deleted:
         raise HTTPException(status_code=400, detail="Folder is deleted")
     return folder
 
 
 def has_active_folder_name_conflict(
-    session, user_id: int, parent_folder_id: int | None, name: str, exclude_folder_id: int | None = None
+    session,
+    user_id: int,
+    parent_folder_id: int | None,
+    name: str,
+    exclude_folder_id: int | None = None,
 ) -> bool:
     query = select(Folder).where(
         Folder.owner_id == user_id,
@@ -92,7 +98,11 @@ def has_active_folder_name_conflict(
 
 
 def has_active_file_name_conflict(
-    session, user_id: int, folder_id: int | None, name: str, exclude_file_id: int | None = None
+    session,
+    user_id: int,
+    folder_id: int | None,
+    name: str,
+    exclude_file_id: int | None = None,
 ) -> bool:
     query = select(File).where(
         File.owner_id == user_id,
@@ -116,22 +126,34 @@ def soft_delete_folder_tree(session, root_folder: Folder) -> None:
     while stack:
         current_folder = stack.pop()
         folder_ids.append(current_folder.id)
-        child_folders = session.execute(
-            select(Folder).where(Folder.parent_folder_id == current_folder.id)
-        ).scalars().all()
+        child_folders = (
+            session.execute(
+                select(Folder).where(Folder.parent_folder_id == current_folder.id)
+            )
+            .scalars()
+            .all()
+        )
         stack.extend(child_folders)
 
-    active_folders = session.execute(
-        select(Folder).where(Folder.id.in_(folder_ids), ~Folder.is_deleted)
-    ).scalars().all()
+    active_folders = (
+        session.execute(
+            select(Folder).where(Folder.id.in_(folder_ids), ~Folder.is_deleted)
+        )
+        .scalars()
+        .all()
+    )
     for folder in active_folders:
         folder.is_deleted = True
         folder.deleted_at = deleted_at
         folder.updated_at = deleted_at
 
-    active_files = session.execute(
-        select(File).where(File.folder_id.in_(folder_ids), ~File.is_deleted)
-    ).scalars().all()
+    active_files = (
+        session.execute(
+            select(File).where(File.folder_id.in_(folder_ids), ~File.is_deleted)
+        )
+        .scalars()
+        .all()
+    )
     for file in active_files:
         file.is_deleted = True
         file.deleted_at = deleted_at
@@ -159,11 +181,9 @@ def register_user(data: UserCreate):
         email = data.email.strip().lower()
 
         if not username:
-            raise HTTPException(
-                status_code=400, detail="Username cannot be empty")
+            raise HTTPException(status_code=400, detail="Username cannot be empty")
         if not email:
-            raise HTTPException(
-                status_code=400, detail="Email cannot be empty")
+            raise HTTPException(status_code=400, detail="Email cannot be empty")
         if len(data.password) < 8:
             raise HTTPException(
                 status_code=400,
@@ -171,9 +191,7 @@ def register_user(data: UserCreate):
             )
 
         existing_user = session.execute(
-            select(User).where(
-                (User.username == username) | (User.email == email)
-            )
+            select(User).where((User.username == username) | (User.email == email))
         ).scalar_one_or_none()
         if existing_user:
             raise HTTPException(
@@ -222,6 +240,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+
 # GET /files
 
 
@@ -238,7 +257,9 @@ def download_file(file_id: int, current_user: User = Depends(get_current_user)):
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
         if file.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You do not have access to this file")
+            raise HTTPException(
+                status_code=403, detail="You do not have access to this file"
+            )
         if file.is_deleted:
             raise HTTPException(status_code=400, detail="File is deleted")
 
@@ -251,6 +272,7 @@ def download_file(file_id: int, current_user: User = Depends(get_current_user)):
             media_type=file.mime_type or "application/octet-stream",
             filename=file.original_name,
         )
+
 
 # GET folders
 
@@ -265,19 +287,31 @@ def get_folder_contents(folder_id: int, current_user: User = Depends(get_current
     with SessionLocal() as session:
         folder = get_accessible_active_folder(session, folder_id, current_user.id)
 
-        child_folders = session.execute(
-            select(Folder).where(
-                Folder.parent_folder_id == folder.id,
-                ~Folder.is_deleted,
-            ).order_by(Folder.name.asc(), Folder.id.asc())
-        ).scalars().all()
+        child_folders = (
+            session.execute(
+                select(Folder)
+                .where(
+                    Folder.parent_folder_id == folder.id,
+                    ~Folder.is_deleted,
+                )
+                .order_by(Folder.name.asc(), Folder.id.asc())
+            )
+            .scalars()
+            .all()
+        )
 
-        files = session.execute(
-            select(File).where(
-                File.folder_id == folder.id,
-                ~File.is_deleted,
-            ).order_by(File.original_name.asc(), File.id.asc())
-        ).scalars().all()
+        files = (
+            session.execute(
+                select(File)
+                .where(
+                    File.folder_id == folder.id,
+                    ~File.is_deleted,
+                )
+                .order_by(File.original_name.asc(), File.id.asc())
+            )
+            .scalars()
+            .all()
+        )
 
         return {"folders": child_folders, "files": files}
 
@@ -285,23 +319,35 @@ def get_folder_contents(folder_id: int, current_user: User = Depends(get_current
 @app.get("/trash/files", response_model=list[FileRead])
 def get_deleted_files(current_user: User = Depends(get_current_user)):
     with SessionLocal() as session:
-        return session.execute(
-            select(File).where(
-                File.owner_id == current_user.id,
-                File.is_deleted,
-            ).order_by(File.deleted_at.desc())
-        ).scalars().all()
+        return (
+            session.execute(
+                select(File)
+                .where(
+                    File.owner_id == current_user.id,
+                    File.is_deleted,
+                )
+                .order_by(File.deleted_at.desc())
+            )
+            .scalars()
+            .all()
+        )
 
 
 @app.get("/trash/folders", response_model=list[FolderRead])
 def get_deleted_folders(current_user: User = Depends(get_current_user)):
     with SessionLocal() as session:
-        return session.execute(
-            select(Folder).where(
-                Folder.owner_id == current_user.id,
-                Folder.is_deleted,
-            ).order_by(Folder.deleted_at.desc())
-        ).scalars().all()
+        return (
+            session.execute(
+                select(Folder)
+                .where(
+                    Folder.owner_id == current_user.id,
+                    Folder.is_deleted,
+                )
+                .order_by(Folder.deleted_at.desc())
+            )
+            .scalars()
+            .all()
+        )
 
 
 @app.post("/files", response_model=FileRead, status_code=201)
@@ -317,13 +363,17 @@ def upload_file(
 
         target_folder = None
         if folder_id is not None:
-            target_folder = get_accessible_active_folder(session, folder_id, current_user.id)
+            target_folder = get_accessible_active_folder(
+                session, folder_id, current_user.id
+            )
 
         original_name = Path(file.filename or "").name.strip()
         if not original_name:
             raise HTTPException(status_code=400, detail="File name cannot be empty")
 
-        if has_active_file_name_conflict(session, current_user.id, folder_id, original_name):
+        if has_active_file_name_conflict(
+            session, current_user.id, folder_id, original_name
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="A file with the same name already exists in this location",
@@ -372,14 +422,12 @@ def create_folder(data: FolderCreate, current_user: User = Depends(get_current_u
     with SessionLocal() as session:
         folder_name = data.name.strip()
         if not folder_name:
-            raise HTTPException(
-                status_code=400, detail="Folder name cannot be empty")
+            raise HTTPException(status_code=400, detail="Folder name cannot be empty")
 
         if data.parent_folder_id is not None:
             parent_folder = session.get(Folder, data.parent_folder_id)
             if not parent_folder:
-                raise HTTPException(
-                    status_code=404, detail="Parent folder not found")
+                raise HTTPException(status_code=404, detail="Parent folder not found")
             if parent_folder.owner_id != current_user.id:
                 raise HTTPException(
                     status_code=403,
@@ -399,7 +447,7 @@ def create_folder(data: FolderCreate, current_user: User = Depends(get_current_u
         folder = Folder(
             name=folder_name,
             parent_folder_id=data.parent_folder_id,
-            owner_id=current_user.id
+            owner_id=current_user.id,
         )
 
         try:
@@ -470,10 +518,14 @@ def move_folder(
         target_parent_id = data.parent_folder_id
 
         if target_parent_id == folder.id:
-            raise HTTPException(status_code=400, detail="A folder cannot be moved inside itself")
+            raise HTTPException(
+                status_code=400, detail="A folder cannot be moved inside itself"
+            )
 
         if target_parent_id is not None:
-            target_parent = get_accessible_active_folder(session, target_parent_id, current_user.id)
+            target_parent = get_accessible_active_folder(
+                session, target_parent_id, current_user.id
+            )
             if folder_is_descendant(session, folder.id, target_parent.id):
                 raise HTTPException(
                     status_code=400,
@@ -517,7 +569,9 @@ def delete_folder(folder_id: int, current_user: User = Depends(get_current_user)
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
         if folder.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You do not have access to this folder")
+            raise HTTPException(
+                status_code=403, detail="You do not have access to this folder"
+            )
         if folder.is_deleted:
             raise HTTPException(status_code=400, detail="Folder is already deleted")
 
@@ -537,7 +591,9 @@ def delete_folder(folder_id: int, current_user: User = Depends(get_current_user)
 
 
 @app.patch("/files/{file_id}", response_model=FileRead)
-def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get_current_user)):
+def rename_file(
+    file_id: int, data: FileRename, current_user: User = Depends(get_current_user)
+):
     with SessionLocal() as session:
         file = session.get(File, file_id)
 
@@ -545,16 +601,15 @@ def rename_file(file_id: int, data: FileRename, current_user: User = Depends(get
             raise HTTPException(status_code=404, detail="File not found")
         if file.owner_id != current_user.id:
             raise HTTPException(
-                status_code=403, detail="You do not have access to this file")
+                status_code=403, detail="You do not have access to this file"
+            )
 
         if file.is_deleted:
-            raise HTTPException(
-                status_code=400, detail="Cannot rename a deleted file")
+            raise HTTPException(status_code=400, detail="Cannot rename a deleted file")
 
         new_name = data.new_name.strip()
         if not new_name:
-            raise HTTPException(
-                status_code=400, detail="File name cannot be empty")
+            raise HTTPException(status_code=400, detail="File name cannot be empty")
 
         if has_active_file_name_conflict(
             session,
@@ -596,13 +651,17 @@ def move_file(
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
         if file.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You do not have access to this file")
+            raise HTTPException(
+                status_code=403, detail="You do not have access to this file"
+            )
         if file.is_deleted:
             raise HTTPException(status_code=400, detail="Cannot move a deleted file")
 
         target_folder_id = data.folder_id
         if target_folder_id is not None:
-            target_folder = get_accessible_active_folder(session, target_folder_id, current_user.id)
+            target_folder = get_accessible_active_folder(
+                session, target_folder_id, current_user.id
+            )
             target_folder_id = target_folder.id
 
         if has_active_file_name_conflict(
@@ -646,15 +705,21 @@ def restore_file(
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
         if file.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You do not have access to this file")
+            raise HTTPException(
+                status_code=403, detail="You do not have access to this file"
+            )
         if not file.is_deleted:
             raise HTTPException(status_code=400, detail="File is not deleted")
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        target_folder_id = data.folder_id if data.folder_id is not None else file.folder_id
+        target_folder_id = (
+            data.folder_id if data.folder_id is not None else file.folder_id
+        )
         if target_folder_id is not None:
-            target_folder = get_accessible_active_folder(session, target_folder_id, current_user.id)
+            target_folder = get_accessible_active_folder(
+                session, target_folder_id, current_user.id
+            )
             target_folder_id = target_folder.id
 
         if has_active_file_name_conflict(
@@ -703,11 +768,11 @@ def delete_file(file_id: int, current_user: User = Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="File not found")
         if file.owner_id != current_user.id:
             raise HTTPException(
-                status_code=403, detail="You do not have access to this file")
+                status_code=403, detail="You do not have access to this file"
+            )
 
         if file.is_deleted:
-            raise HTTPException(
-                status_code=400, detail="File is already deleted")
+            raise HTTPException(status_code=400, detail="File is already deleted")
 
         file.is_deleted = True
         file.deleted_at = utcnow()
